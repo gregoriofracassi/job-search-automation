@@ -1,0 +1,71 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { JobStatus } from '../../domain/enums/job-status.enum';
+import { Job } from '../../domain/models/job.model';
+
+export class JobResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() jobId!: string;
+  @ApiProperty() jobUrl!: string;
+  @ApiPropertyOptional() applyUrl!: string | null;
+  @ApiProperty() easyApply!: boolean;
+  @ApiProperty() jobTitle!: string;
+  @ApiProperty() companyName!: string;
+  @ApiPropertyOptional() companyUrl!: string | null;
+  @ApiPropertyOptional() companyLogoUrl!: string | null;
+  @ApiProperty() location!: string;
+  @ApiPropertyOptional() seniorityLevel!: string | null;
+  @ApiPropertyOptional() employmentType!: string | null;
+  @ApiPropertyOptional() jobFunction!: string | null;
+  @ApiPropertyOptional() industries!: string | null;
+  @ApiProperty() jobDescription!: string;
+  @ApiPropertyOptional() timePosted!: string | null;
+  @ApiPropertyOptional() numApplicants!: string | null;
+  @ApiPropertyOptional() salaryRange!: string | null;
+  @ApiProperty() scrapedAt!: Date;
+  @ApiPropertyOptional() scrapeKeywords!: string | null;
+  @ApiPropertyOptional() scrapeLocation!: string | null;
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 }) score!: number | null;
+  @ApiPropertyOptional() scoreReasoning!: string | null;
+  @ApiPropertyOptional() scoreCriteria!: Record<string, number> | null;
+  @ApiPropertyOptional() scoredAt!: Date | null;
+  @ApiProperty({ enum: JobStatus }) status!: JobStatus;
+  @ApiPropertyOptional() appliedAt!: Date | null;
+  @ApiPropertyOptional() notes!: string | null;
+  @ApiProperty() createdAt!: Date;
+  @ApiProperty() updatedAt!: Date;
+
+  static fromDomain(job: Job): JobResponseDto {
+    const dto = new JobResponseDto();
+    dto.id = job.id;
+    dto.jobId = job.jobId;
+    dto.jobUrl = job.jobUrl;
+    dto.applyUrl = job.applyUrl;
+    dto.easyApply = job.easyApply;
+    dto.jobTitle = job.jobTitle;
+    dto.companyName = job.companyName;
+    dto.companyUrl = job.companyUrl;
+    dto.companyLogoUrl = job.companyLogoUrl;
+    dto.location = job.location;
+    dto.seniorityLevel = job.seniorityLevel;
+    dto.employmentType = job.employmentType;
+    dto.jobFunction = job.jobFunction;
+    dto.industries = job.industries;
+    dto.jobDescription = job.jobDescription;
+    dto.timePosted = job.timePosted;
+    dto.numApplicants = job.numApplicants;
+    dto.salaryRange = job.salaryRange;
+    dto.scrapedAt = job.scrapedAt;
+    dto.scrapeKeywords = job.scrapeKeywords;
+    dto.scrapeLocation = job.scrapeLocation;
+    dto.score = job.score;
+    dto.scoreReasoning = job.scoreReasoning;
+    dto.scoreCriteria = job.scoreCriteria;
+    dto.scoredAt = job.scoredAt;
+    dto.status = job.status;
+    dto.appliedAt = job.appliedAt;
+    dto.notes = job.notes;
+    dto.createdAt = job.createdAt;
+    dto.updatedAt = job.updatedAt;
+    return dto;
+  }
+}

@@ -6,7 +6,9 @@ import { Response } from 'express';
  * Add entries here as new domain exceptions are created.
  */
 const EXCEPTION_STATUS_MAP: Record<string, number> = {
-  // Example: NotFoundException: 404
+  ApifyRunFailedException: 502,
+  JobNotFoundException: 404,
+  InvalidJobTransitionException: 422,
 };
 
 @Catch()

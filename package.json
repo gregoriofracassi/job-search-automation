@@ -2,8 +2,10 @@
   "name": "job-search-automation",
   "private": true,
   "scripts": {
+    "predev": "node scripts/setup-env.js",
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .gitignore",

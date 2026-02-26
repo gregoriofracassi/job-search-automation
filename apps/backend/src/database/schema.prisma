@@ -1,10 +1,70 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = []
+}
+
+// ─── Jobs module ─────────────────────────────────────────────────────────────
+
+enum JobStatus {
+  NEW
+  EVALUATED
+  SAVED
+  APPLIED
+  INTERVIEWING
+  OFFERED
+  REJECTED
+  WITHDRAWN
+}
+
+model Job {
+  id String @id @default(uuid())
+
+  // LinkedIn identifiers — job_id is the deduplication key
+  jobId      String  @unique
+  jobUrl     String
+  applyUrl   String?
+  easyApply  Boolean @default(false)
+
+  // Listing details
+  jobTitle       String
+  companyName    String
+  companyUrl     String?
+  companyLogoUrl String?
+  location       String
+  seniorityLevel String?
+  employmentType String?
+  jobFunction    String?
+  industries     String?
+
+  // Content
+  jobDescription     String @db.Text
+  jobDescriptionHtml String @db.Text
+
+  // Stats (snapshotted at scrape time)
+  timePosted    String?
+  numApplicants String?
+  salaryRange   String?
+
+  // Scraping metadata
+  scrapedAt      DateTime @default(now())
+  scrapeKeywords String?
+  scrapeLocation String?
+
+  // LLM evaluation (null until scored)
+  score          Int?
+  scoreReasoning String?   @db.Text
+  scoreCriteria  Json?
+  scoredAt       DateTime?
+
+  // Application lifecycle
+  status    JobStatus @default(NEW)
+  appliedAt DateTime?
+  notes     String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -1,12 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C /Users/gregoriofracassi/Projects/job-search-automation ls-files:*)",
-      "Bash(unzip:*)",
-      "WebFetch(domain:code.claude.com)",
-      "Bash(rm:*)",
-      "Bash(pnpm install)",
-      "Bash(pnpm exec husky:*)"
+      "WebFetch(domain:apify.com)",
+      "WebFetch(domain:docs.apify.com)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "Bash(python3 -m json.tool:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(tree:*)",
+      "Bash(pnpm --filter @job-search/backend build:*)",
+      "Bash(pnpm --filter @job-search/backend typecheck:*)",
+      "Bash(docker compose:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(pnpm db:push:*)",
+      "Bash(pnpm --filter @job-search/backend db:push:*)",
+      "Bash(pnpm --filter @job-search/backend dev:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm tsx:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,10 +6,17 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "test": "jest --config jest.config.ts"
+    "test": "jest --config jest.config.ts",
+    "db:migrate": "prisma migrate dev --schema=src/database/schema.prisma",
+    "db:generate": "prisma generate --schema=src/database/schema.prisma",
+    "db:studio": "prisma studio --schema=src/database/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=src/database/schema.prisma",
+    "db:push": "prisma db push --schema=src/database/schema.prisma"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/cqrs": "^10.0.0",
@@ -18,6 +25,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.0.0",
     "@prisma/client": "^5.0.0",
+    "apify-client": "^2.22.1",
     "bullmq": "^5.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
