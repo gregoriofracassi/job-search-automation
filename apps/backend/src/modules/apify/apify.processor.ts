@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { CommandBus, EventBus } from '@nestjs/cqrs';
 import { Job } from 'bullmq';
+import * as cliProgress from 'cli-progress';
 import { ApifyService } from './apify.service';
 import { LinkedinJobResponseDto } from './dto/responses/linkedin-job.response.dto';
 import { APIFY_QUEUE } from '@/queue/queue.module';
@@ -36,8 +37,6 @@ export class ApifyProcessor extends WorkerHost {
       return [];
     }
 
-    this.logger.log(`Processing job ${job.id} — scraping LinkedIn jobs`);
-
     // Use provided URLs or fall back to hardcoded list
     const urls = job.data.urls ?? LINKEDIN_SEARCH_URLS;
     const count = job.data.count;
@@ -45,11 +44,33 @@ export class ApifyProcessor extends WorkerHost {
     const scrapeSkills = job.data.scrapeSkills ?? false;
     const scrapeCompany = job.data.scrapeCompany ?? false;
 
+    // Log summary
+    console.log('\n┌─────────────────────────────────────────────────────────┐');
+    console.log('│           🚀 LINKEDIN JOB SCRAPING STARTED              │');
+    console.log('└─────────────────────────────────────────────────────────┘');
+    console.log(`📋 URLs to scrape: ${urls.length}`);
+    console.log(`🔢 Jobs per URL: ${count ?? 'unlimited'}`);
+    console.log(
+      `⚙️  Extra data: ${scrapeJobDetails || scrapeSkills || scrapeCompany ? 'Yes' : 'No'}\n`,
+    );
+
+    // Create progress bar for URL scraping
+    const urlProgressBar = new cliProgress.SingleBar({
+      format: '🌐 Scraping URLs   |{bar}| {percentage}% | {value}/{total} URLs | ETA: {eta}s',
+      barCompleteChar: '\u2588',
+      barIncompleteChar: '\u2591',
+      hideCursor: true,
+    });
+
     // Process each URL sequentially (actor accepts single URL per run)
     const allResults: LinkedinJobResponseDto[] = [];
+    urlProgressBar.start(urls.length, 0);
 
-    for (const url of urls) {
-      this.logger.log(`Scraping URL: ${url}`);
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const shortUrl = url.length > 80 ? url.substring(0, 77) + '...' : url;
+
+      this.logger.log(`\n🔍 Scraping URL ${i + 1}/${urls.length}: ${shortUrl}`);
 
       const results = await this.apifyService.runAndCollect(
         url,
@@ -59,13 +80,22 @@ export class ApifyProcessor extends WorkerHost {
         scrapeCompany,
       );
 
-      this.logger.log(`Retrieved ${results.length} jobs from ${url}`);
+      this.logger.log(`✅ Retrieved ${results.length} jobs from URL ${i + 1}`);
       allResults.push(...results);
+      urlProgressBar.update(i + 1);
     }
 
-    this.logger.log(`Job ${job.id} complete — ${allResults.length} jobs scraped, saving to DB`);
+    urlProgressBar.stop();
+
+    console.log(`\n✨ Scraping complete! Total jobs scraped: ${allResults.length}`);
+    console.log(`💾 Saving jobs to database...\n`);
 
     const jobIds = await this.commandBus.execute(new SaveScrapedJobsCommand(allResults));
+
+    console.log(
+      `✅ Saved ${jobIds.length} jobs to database (${allResults.length - jobIds.length} duplicates skipped)`,
+    );
+    console.log(`🤖 Starting LLM evaluation...\n`);
 
     // Per architecture rules (Events Rules, line 122-123):
     // "Domain events are dispatched in-process via the NestJS EventBus"
@@ -83,7 +113,7 @@ export class ApifyProcessor extends WorkerHost {
       ),
     );
 
-    this.logger.log(`JobsScrapedEvent published for ${jobIds.length} jobs`);
+    this.logger.log(`📤 JobsScrapedEvent published for ${jobIds.length} jobs`);
 
     return allResults;
   }

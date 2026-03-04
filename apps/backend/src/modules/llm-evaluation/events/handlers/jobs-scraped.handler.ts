@@ -1,5 +1,6 @@
 import { EventsHandler, IEventHandler, EventBus } from '@nestjs/cqrs';
 import { Logger } from '@nestjs/common';
+import * as cliProgress from 'cli-progress';
 import { JobsScrapedEvent } from '@/modules/jobs/domain/events/jobs-scraped.event';
 import { JobRepository } from '@/modules/jobs/domain/repositories/job.repository';
 import { UserPreferenceRepository } from '../../domain/repositories/user-preference.repository';
@@ -30,8 +31,6 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
   ) {}
 
   async handle(event: JobsScrapedEvent): Promise<void> {
-    this.logger.log(`Evaluating ${event.jobIds.length} scraped jobs`);
-
     // Fetch user preferences (for now, use default)
     const preferences = await this.userPreferenceRepository.findDefault();
 
@@ -40,9 +39,29 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
       return;
     }
 
+    console.log('┌─────────────────────────────────────────────────────────┐');
+    console.log('│          🤖 LLM EVALUATION STARTED                      │');
+    console.log('└─────────────────────────────────────────────────────────┘');
+    console.log(`📊 Jobs to evaluate: ${event.jobIds.length}`);
+    console.log(`🧠 Model: ${preferences.llmModel}`);
+    console.log(`🎯 Min score threshold: ${preferences.minScoreThreshold}\n`);
+
+    // Create progress bar for LLM evaluation
+    const evalProgressBar = new cliProgress.SingleBar({
+      format:
+        '🧠 Evaluating Jobs |{bar}| {percentage}% | {value}/{total} jobs | ETA: {eta}s | ⭐ Avg Score: {avgScore}',
+      barCompleteChar: '\u2588',
+      barIncompleteChar: '\u2591',
+      hideCursor: true,
+    });
+
     let evaluatedCount = 0;
     let filteredCount = 0;
     let errorCount = 0;
+    let totalScore = 0;
+    let processedCount = 0;
+
+    evalProgressBar.start(event.jobIds.length, 0, { avgScore: 'N/A' });
 
     for (const jobId of event.jobIds) {
       try {
@@ -103,22 +122,45 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
           ),
         );
 
-        this.logger.log(
-          `Job ${jobId} evaluated: score ${evaluation.score}/${preferences.minScoreThreshold} ` +
-            `(status: ${job.status})`,
-        );
         evaluatedCount++;
+        totalScore += evaluation.score;
+        processedCount++;
+        const avgScore = Math.round(totalScore / processedCount);
+        evalProgressBar.update(processedCount, { avgScore: avgScore.toString() });
       } catch (error) {
         const errorStack = error instanceof Error ? error.stack : String(error);
-        this.logger.error(`Failed to evaluate job ${jobId}:`, errorStack);
+        this.logger.error(
+          `\n❌ Failed to evaluate job ${jobId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
         errorCount++;
+        processedCount++;
+        evalProgressBar.update(processedCount, {
+          avgScore:
+            processedCount > 0
+              ? Math.round(totalScore / (processedCount - errorCount)).toString()
+              : 'N/A',
+        });
         // Continue with next job (don't fail entire batch)
       }
     }
 
-    this.logger.log(
-      `Evaluation complete: ${evaluatedCount} evaluated, ${filteredCount} filtered, ` +
-        `${errorCount} errors`,
-    );
+    evalProgressBar.stop();
+
+    // Final summary
+    console.log('\n┌─────────────────────────────────────────────────────────┐');
+    console.log('│          ✅ EVALUATION COMPLETE                         │');
+    console.log('└─────────────────────────────────────────────────────────┘');
+    console.log(`✅ Successfully evaluated: ${evaluatedCount}`);
+    console.log(`🚫 Filtered by keywords: ${filteredCount}`);
+    console.log(`❌ Errors: ${errorCount}`);
+    if (evaluatedCount > 0) {
+      const avgScore = Math.round(totalScore / evaluatedCount);
+      console.log(`⭐ Average score: ${avgScore}/100`);
+      const highScoring =
+        evaluatedCount > 0
+          ? '(Check database for jobs ≥' + preferences.minScoreThreshold + ')'
+          : '';
+      console.log(`🎯 High-scoring jobs: ${highScoring}\n`);
+    }
   }
 }

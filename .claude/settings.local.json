@@ -36,7 +36,8 @@
       "Bash(npx ts-node:*)",
       "WebFetch(domain:help.apify.com)",
       "Bash(kill:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []
