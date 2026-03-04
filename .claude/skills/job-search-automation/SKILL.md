@@ -3,23 +3,34 @@ name: job-search-automation
 description: Complete specification for the LinkedIn Job Search Automation system using curious_coder/linkedin-jobs-search-scraper actor. Covers correct input schema with cookies+userAgent, CQRS architecture, domain events, and end-to-end workflows. CONFIRMED WORKING (Feb 2026).
 ---
 
-# Job Search Automation — Confirmed Working Architecture
+# Job Search Automation — MVP Scope
+
+## Current Scope 🎯 (March 2026)
+
+**Simple, manual job search workflow:**
+
+1. Manually update LinkedIn cookies in code
+2. Scrape 3-4 different LinkedIn search URLs (unlimited results)
+3. Filter out unwanted jobs by excluded keywords
+4. Score jobs with LLM (Gemini 2.5 Flash) based on preferences
+5. Save scored jobs in database
+
+**Out of scope (for now):**
+
+- ❌ Frontend dashboard
+- ❌ Settings UI (preferences stored in DB, managed manually)
+- ❌ Automated scheduling
+- ❌ Cover letter generation
+- ❌ Cookie auto-refresh
 
 ## What's Implemented ✅
 
-1. **Apify Integration** - LinkedIn scraping with correct actor input schema
-2. **Job Storage** - Database with proper deduplication and field mapping
+1. **Apify Integration** - LinkedIn scraping with manual cookie updates
+2. **Job Storage** - Database with deduplication by LinkedIn job ID
 3. **CQRS Architecture** - Commands, queries, and event handlers
-4. **Domain Events** - Event-driven flow for future LLM integration
-5. **Background Jobs** - BullMQ processing for long-running scrapes
-
-## What's NOT Implemented ❌
-
-1. **LLM Evaluation** - Job scoring against preferences
-2. **User Preferences** - Criteria storage and management
-3. **Scheduler** - Daily automated scraping
-4. **Cover Letters** - LLM-powered generation
-5. **Frontend** - React dashboard
+4. **LLM Evaluation** - Keyword filtering + Gemini 2.5 Flash scoring
+5. **Background Jobs** - BullMQ for async scraping
+6. **User Preferences** - Database storage (manual editing for now)
 
 ---
 
@@ -61,13 +72,17 @@ LINKEDIN_COOKIES = [
 ];
 ```
 
-**Cookie Export Steps:**
+**Cookie Update Process (Manual - Required Before Each Scrape):**
 
-1. Install Cookie-Editor extension
-2. Go to linkedin.com (logged in)
-3. Export cookies as JSON
-4. Update `ApifyService.LINKEDIN_COOKIES` array
-5. Must refresh before each scrape (especially `__cf_bm`)
+1. Install [Cookie-Editor](https://cookie-editor.com/) browser extension
+2. Go to linkedin.com (ensure you're logged in)
+3. Click Cookie-Editor → Export → Copy as JSON
+4. Open `apps/backend/src/modules/apify/apify.service.ts`
+5. Replace the `LINKEDIN_COOKIES` array with your exported cookies
+6. Save the file
+7. Restart the backend server
+
+**⚠️ Important:** `__cf_bm` cookie expires every 30 minutes, so you need fresh cookies before scraping!
 
 ### Output Format
 
@@ -281,9 +296,10 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/job_search
 REDIS_URL=redis://localhost:6381
 APIFY_API_KEY=apify_api_...
 
-# Future LLM
-LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
+# LLM (OpenRouter)
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-v1-...
+# Using google/gemini-2.5-flash: fast, cheap ($0.0006/job), built for reasoning
 
 # Future scheduler
 DAILY_SCRAPE_CRON=0 9 * * *
@@ -304,98 +320,121 @@ export const LINKEDIN_SEARCH_URLS = [
 
 ---
 
-## 6. Testing
+## 6. Complete Workflow (MVP)
+
+### Prerequisites
+
+1. **Update LinkedIn Cookies** (see section 1 above)
+2. **Update Search URLs** in `apps/backend/src/modules/apify/linkedin-search-urls.config.ts`
+3. **Customize Preferences** (optional) - Update the database directly:
+
+```sql
+-- Update scoring criteria and excluded keywords
+UPDATE "UserPreference"
+SET
+  "systemPrompt" = 'Your custom evaluation instructions...',
+  "scoringCriteria" = ARRAY['Remote work', 'TypeScript', 'Startup culture'],
+  "excludedKeywords" = ARRAY['php', 'python', 'java ', 'ruby'],
+  "minScoreThreshold" = 75
+WHERE "isDefault" = true;
+```
+
+### Running the System
 
 ```bash
 # 1. Start infrastructure
 docker compose up -d
 
-# 2. Push database schema
+# 2. Ensure latest schema
 pnpm --filter @job-search/backend db:push
 
-# 3. Start backend
+# 3. Seed default preferences (if not done yet)
+npx ts-node -r tsconfig-paths/register src/modules/llm-evaluation/seed-preferences.ts
+
+# 4. Start backend
 pnpm --filter @job-search/backend dev
 
-# 4. Trigger scrape (uses hardcoded URLs)
-curl -X POST http://localhost:3000/apify/scrape \
+# 5. Trigger scrape (unlimited results from hardcoded URLs)
+curl -X POST http://localhost:3000/api/apify/scrape \
   -H "Content-Type: application/json" \
   -d '{}'
 
-# 5. Or with custom URL
-curl -X POST http://localhost:3000/apify/scrape \
-  -H "Content-Type: application/json" \
-  -d '{"urls":["https://linkedin.com/jobs/search?..."], "count":25}'
+# 6. Monitor logs for:
+#    - Job scraping progress
+#    - Keyword filtering (jobs skipped)
+#    - LLM evaluation (jobs scored)
+#    - Final counts
 
-# 6. Check status
-curl http://localhost:3000/apify/jobs/<jobId>
-
-# 7. View in database
+# 7. View scored jobs in database
 pnpm --filter @job-search/backend db:studio
+# Look for jobs with score >= 70 and status = EVALUATED
 ```
+
+### What Happens
+
+1. **Scraper runs** → Fetches jobs from 3-4 LinkedIn URLs (unlimited results)
+2. **Jobs saved** → Deduplicated by LinkedIn job ID
+3. **Keyword filter** → Jobs with PHP/Python/Java are skipped (saves LLM costs)
+4. **LLM scoring** → Remaining jobs scored 0-100 by Gemini 2.5 Flash
+5. **Status update** → Jobs with score ≥ 70 marked as EVALUATED
+6. **Database** → All jobs stored with scores and reasoning
 
 ---
 
-## 7. Next Steps (Prioritized)
+## 7. Future Enhancements (Out of Current Scope)
 
-### Phase 1: LLM Evaluation ⚠️ CRITICAL
+### Potential Improvements (Not Planned)
 
-**Goal:** Score jobs against user preferences, only save relevant ones
+1. **Cookie Auto-Refresh** - Automatically refresh LinkedIn cookies
+2. **Automated Scheduling** - Daily scrapes at specific times
+3. **Frontend Dashboard** - View and manage jobs via UI
+4. **Settings UI** - Manage preferences without SQL
+5. **Cover Letter Generation** - LLM-powered personalized cover letters
+6. **Multi-User Support** - User authentication and isolation
 
-**Tasks:**
-
-1. Create `UserPreference` model (criteria, resume, minScore)
-2. Create preferences CRUD endpoints
-3. Implement `LlmEvaluationService` (Anthropic SDK)
-4. Create `EvaluateScrapedJobsHandler` (subscribes to `JobsScrapedEvent`)
-5. Update `Job` model to store LLM scores
-6. Add deduplication check (skip if jobId already exists)
-
-**Estimated time:** 2-3 days
-
-### Phase 2: Scheduler
-
-**Goal:** Daily automated scraping at 9 AM
-
-**Tasks:**
-
-1. Create `scheduler` module with `@nestjs/schedule`
-2. Add `@Cron('0 9 * * *')` decorator
-3. Query active SearchConfigs (or use hardcoded URLs)
-4. Enqueue scrape jobs
-
-**Estimated time:** 1 day
-
-### Phase 3: Frontend Dashboard
-
-**Goal:** View jobs, mark as applied, generate cover letters
-
-**Tasks:**
-
-1. React + TanStack Router + Query setup
-2. Jobs list page with filters/sorting
-3. Job detail page
-4. Status update UI
-5. Cover letter generation
-
-**Estimated time:** 3-5 days
+**Current approach:** Keep it simple, manual, and focused on core value (finding good jobs)
 
 ---
 
 ## 8. Cost Estimation
 
 **Apify:** $30/month subscription + ~$5/month usage = $35/month
-**LLM (future):** ~$5/month for evaluation = $5/month
-**Total:** ~$40/month
+**LLM (Gemini 2.5 Flash via OpenRouter):**
+
+- ~100 jobs/day × $0.0006/job = $0.06/day = $1.80/month
+- With aggressive keyword filtering: ~$1/month
+  **Total:** ~$36-37/month
+
+**Cost comparison:**
+
+- Claude 3.5 Sonnet would be ~$54/month (15x more expensive!)
+- Gemini 2.5 Flash: 5x faster, 25x cheaper, built for structured reasoning
 
 ---
 
-## 9. Known Issues
+## 9. Known Issues & Future Improvements
 
 1. **Cookies expire** - `__cf_bm` expires every 30 minutes, need manual refresh
    - Future: Implement cookie refresh mechanism
 
-2. **No filtering** - All scraped jobs saved regardless of relevance
-   - Solution: Implement LLM evaluation (Phase 1)
+2. **Sequential LLM evaluation** - Jobs are evaluated one at a time (slow for large batches)
+   - Current: ~2 seconds per job, ~10 minutes for 250 jobs
+   - **Future improvement: Implement concurrent evaluation**
+   - OpenRouter allows up to 500 RPS for paid models, no risk of overwhelming
+   - Implementation approach:
+     ```typescript
+     // In jobs-scraped.handler.ts, replace the for loop with:
+     const BATCH_SIZE = 10; // Process 10 jobs concurrently
+     for (let i = 0; i < event.jobIds.length; i += BATCH_SIZE) {
+       const batch = event.jobIds.slice(i, i + BATCH_SIZE);
+       await Promise.all(
+         batch.map(async (jobId) => {
+           // existing evaluation logic here
+         }),
+       );
+     }
+     ```
+   - Expected speedup: 10x faster (250 jobs in ~1-2 minutes instead of 10)
 
 3. **No automation** - Must manually trigger scrapes
    - Solution: Implement scheduler (Phase 2)

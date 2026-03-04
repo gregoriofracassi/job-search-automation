@@ -68,3 +68,29 @@ model Job {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── LLM Evaluation module ───────────────────────────────────────────────────
+
+model UserPreference {
+  id String @id @default(uuid())
+
+  // LLM evaluation config
+  systemPrompt      String   @db.Text // Custom instructions for the LLM
+  scoringCriteria   String[] // Array of criteria (e.g., ["Remote-first", "TypeScript stack"])
+  excludedKeywords  String[] // Keywords to filter out (e.g., ["php", "python", "java "])
+  minScoreThreshold Int      @default(70) // Minimum score to mark as EVALUATED
+
+  // Model selection
+  llmProvider String @default("openrouter") // "openrouter", "anthropic", "openai"
+  llmModel    String @default("google/gemini-2.5-flash")
+
+  // User association (for future multi-user support)
+  userId String? // Nullable for now, will be userId when auth is implemented
+
+  isDefault Boolean  @default(false) // Default preferences to use
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isDefault])
+}

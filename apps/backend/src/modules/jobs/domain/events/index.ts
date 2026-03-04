@@ -11,6 +11,5 @@
 export * from './jobs-scraped.event';
 export * from './job-evaluated.event';
 export * from './job-status-changed.event';
-export * from './handlers/jobs-scraped.handler';
 export * from './handlers/job-evaluated.handler';
 export * from './handlers/job-status-changed.handler';
