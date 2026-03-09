@@ -11,33 +11,33 @@
  * - f_TPR: Time posted (r86400 = Past 24 hours, r604800 = Past week, r2592000 = Past month)
  */
 export const LINKEDIN_SEARCH_URLS = [
-  // Node.js - Remote - Europe (Past week)
+  // European Union - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4376997901&distance=25.0&f_TPR=r604800&f_WT=2&geoId=91000000&keywords=node%20js&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true',
 
-  // Backend - Remote - Europe (Past week)
+  // European Union - Backend - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4376997901&distance=25.0&f_TPR=r604800&f_WT=2&geoId=91000000&keywords=backend&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true',
 
-  // Node.js - Remote - United Kingdom (Past week)
+  // Malta - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4355961225&f_TPR=r604800&f_WT=2&geoId=100961908&keywords=node%20js&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true',
 
-  // Node.js - Remote - Germany (Past week)
+  // Germany - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4377682819&f_TPR=r604800&f_WT=2&geoId=101282230&keywords=node%20js&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true',
 
-  // Node.js - Remote - Netherlands (Past week)
+  // Switzerland - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4379719092&f_TPR=r604800&f_WT=2&geoId=106693272&keywords=node%20js&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true',
 
-  // Node.js - Remote - Spain (Past week)
+  // Cyprus - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4375522579&f_TPR=r604800&f_WT=2&geoId=106774002&keywords=node%20js&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true',
 
-  // Node.js - Remote - France (Past week)
+  // France - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4377679882&f_TPR=r604800&f_WT=2&geoId=105015875&keywords=node%20js&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true',
 
-  // Node.js - Remote - Switzerland (Past week)
+  // United Kingdom - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4378179204&f_TPR=r604800&f_WT=2&geoId=101165590&keywords=node%20js&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true',
 
-  // Node.js - Remote - Sweden (Past week)
+  // Netherlands - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4379745861&f_TPR=r604800&f_WT=2&geoId=102890719&keywords=node%20js&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true',
 
-  // Node.js - Remote - Ireland (Past week)
+  // Belgium - Node.js - Remote (Past week)
   'https://www.linkedin.com/jobs/search/?currentJobId=4369828641&f_TPR=r604800&f_WT=2&geoId=100565514&keywords=node%20js&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true',
 ];

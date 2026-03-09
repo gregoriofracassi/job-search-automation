@@ -20,8 +20,7 @@ export class JobEvaluatedHandler implements IEventHandler<JobEvaluatedEvent> {
   private readonly logger = new Logger(JobEvaluatedHandler.name);
 
   async handle(event: JobEvaluatedEvent): Promise<void> {
-    this.logger.log(`JobEvaluatedEvent received: jobId=${event.jobId}, score=${event.score}/100`);
-
+    // this.logger.log(`JobEvaluatedEvent received: jobId=${event.jobId}, score=${event.score}/100`); // Disabled to avoid interrupting progress bar
     // TODO: Future side effects:
     // - if (event.score >= 90) await this.notificationService.sendEmail(...)
     // - await this.analyticsService.recordJobScore(event.jobId, event.score)

@@ -46,7 +46,7 @@ export class LlmEvaluationService {
       throw new LlmApiErrorException('LLM API key not configured');
     }
 
-    this.logger.log(`Evaluating job ${job.id} with model ${llmModel}`);
+    // this.logger.log(`Evaluating job ${job.id} with model ${llmModel}`); // Disabled to avoid interrupting progress bar
 
     try {
       const response = await fetch(this.apiUrl, {
@@ -102,8 +102,6 @@ export class LlmEvaluationService {
    */
   private buildEvaluationPrompt(job: Job, criteria: string[]): string {
     return `
-Evaluate this job posting and score it from 0-100 based on how well it matches the user's preferences.
-
 **Job Details:**
 - Title: ${job.jobTitle}
 - Company: ${job.companyName}
@@ -114,13 +112,8 @@ Evaluate this job posting and score it from 0-100 based on how well it matches t
 **Job Description:**
 ${job.jobDescription}
 
-**Scoring Criteria:**
-${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-
-**Instructions:**
-- Evaluate each criterion individually (0-100)
-- Calculate overall score as weighted average
-- Provide 2-3 sentence reasoning for the overall score
+**Scoring Categories:**
+${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n\n')}
 
 **Response Format (JSON only):**
 \`\`\`json
@@ -128,8 +121,9 @@ ${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
   "overallScore": <0-100>,
   "reasoning": "<2-3 sentence explanation>",
   "criteriaScores": {
-    "${criteria[0]}": <0-100>,
-    "${criteria[1] || 'N/A'}": <0-100>
+    "${criteria[0]}": <0-40>,
+    "${criteria[1]}": <0-25>,
+    "${criteria[2]}": <0-35>
   }
 }
 \`\`\`

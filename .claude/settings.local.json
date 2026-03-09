@@ -37,7 +37,11 @@
       "WebFetch(domain:help.apify.com)",
       "Bash(kill:*)",
       "Bash(psql:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker ps:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": [],
     "ask": []

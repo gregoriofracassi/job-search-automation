@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { CommandBus, EventBus } from '@nestjs/cqrs';
+import { CommandBus } from '@nestjs/cqrs';
 import { Job } from 'bullmq';
 import * as cliProgress from 'cli-progress';
 import { ApifyService } from './apify.service';
@@ -8,7 +8,6 @@ import { LinkedinJobResponseDto } from './dto/responses/linkedin-job.response.dt
 import { APIFY_QUEUE } from '@/queue/queue.module';
 import { SCRAPE_LINKEDIN_JOBS_JOB } from './commands/handlers/scrape-linkedin-jobs.handler';
 import { SaveScrapedJobsCommand } from '@/modules/jobs/commands/impl/save-scraped-jobs.command';
-import { JobsScrapedEvent } from '@/modules/jobs/domain/events/jobs-scraped.event';
 import { LINKEDIN_SEARCH_URLS } from './linkedin-search-urls.config';
 
 export interface ScrapeJobData {
@@ -26,7 +25,6 @@ export class ApifyProcessor extends WorkerHost {
   constructor(
     private readonly apifyService: ApifyService,
     private readonly commandBus: CommandBus,
-    private readonly eventBus: EventBus,
   ) {
     super();
   }
@@ -45,12 +43,10 @@ export class ApifyProcessor extends WorkerHost {
     const scrapeCompany = job.data.scrapeCompany ?? false;
 
     // Log summary
-    console.log('\n┌─────────────────────────────────────────────────────────┐');
-    console.log('│           🚀 LINKEDIN JOB SCRAPING STARTED              │');
-    console.log('└─────────────────────────────────────────────────────────┘');
-    console.log(`📋 URLs to scrape: ${urls.length}`);
-    console.log(`🔢 Jobs per URL: ${count ?? 'unlimited'}`);
-    console.log(
+    this.logger.log('\n🚀 LINKEDIN JOB SCRAPING STARTED');
+    this.logger.log(`📋 URLs to scrape: ${urls.length}`);
+    this.logger.log(`🔢 Jobs per URL: ${count ?? 'unlimited'}`);
+    this.logger.log(
       `⚙️  Extra data: ${scrapeJobDetails || scrapeSkills || scrapeCompany ? 'Yes' : 'No'}\n`,
     );
 
@@ -68,9 +64,6 @@ export class ApifyProcessor extends WorkerHost {
 
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
-      const shortUrl = url.length > 80 ? url.substring(0, 77) + '...' : url;
-
-      this.logger.log(`\n🔍 Scraping URL ${i + 1}/${urls.length}: ${shortUrl}`);
 
       const results = await this.apifyService.runAndCollect(
         url,
@@ -80,23 +73,25 @@ export class ApifyProcessor extends WorkerHost {
         scrapeCompany,
       );
 
-      this.logger.log(`✅ Retrieved ${results.length} jobs from URL ${i + 1}`);
       allResults.push(...results);
       urlProgressBar.update(i + 1);
     }
 
     urlProgressBar.stop();
 
-    console.log(`\n✨ Scraping complete! Total jobs scraped: ${allResults.length}`);
-    console.log(`💾 Saving jobs to database...\n`);
+    this.logger.log(`\n✨ Scraping complete!`);
+    this.logger.log(`   📦 Total job listings retrieved from LinkedIn: ${allResults.length}`);
+    this.logger.log(`   💾 Saving to database...\n`);
 
     const jobIds = await this.commandBus.execute(new SaveScrapedJobsCommand(allResults));
 
-    console.log(
-      `✅ Saved ${jobIds.length} jobs to database (${allResults.length - jobIds.length} duplicates skipped)`,
-    );
-    console.log(`🤖 Starting LLM evaluation...\n`);
+    this.logger.log(`✅ Database save complete!`);
+    this.logger.log(`   💚 New jobs saved: ${jobIds.length}`);
+    this.logger.log(`   ⚠️  Duplicates skipped: ${allResults.length - jobIds.length}\n`);
 
+    // DISABLED: Automatic LLM evaluation after scraping
+    // Evaluation must now be triggered manually via POST /api/api/llm/evaluate
+    //
     // Per architecture rules (Events Rules, line 122-123):
     // "Domain events are dispatched in-process via the NestJS EventBus"
     // "Events are published from command handlers after state is persisted"
@@ -104,16 +99,17 @@ export class ApifyProcessor extends WorkerHost {
     // Note: In this case, we publish from the processor (not handler) because
     // the processor orchestrates the entire scrape workflow. The SaveScrapedJobsCommand
     // is a simple persistence operation that returns jobIds for event publishing.
-    this.eventBus.publish(
-      new JobsScrapedEvent(
-        jobIds,
-        undefined, // searchConfigId (future: will be passed from scheduler)
-        undefined, // scrapeKeywords (extracted from URL if needed)
-        undefined, // scrapeLocation (extracted from URL if needed)
-      ),
-    );
-
-    this.logger.log(`📤 JobsScrapedEvent published for ${jobIds.length} jobs`);
+    //
+    // this.eventBus.publish(
+    //   new JobsScrapedEvent(
+    //     jobIds,
+    //     undefined, // searchConfigId (future: will be passed from scheduler)
+    //     undefined, // scrapeKeywords (extracted from URL if needed)
+    //     undefined, // scrapeLocation (extracted from URL if needed)
+    //   ),
+    // );
+    //
+    // this.logger.log(`📤 JobsScrapedEvent published for ${jobIds.length} jobs`);
 
     return allResults;
   }

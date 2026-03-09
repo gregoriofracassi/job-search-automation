@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ApifyClient } from 'apify-client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { LinkedinJobResponseDto } from './dto/responses/linkedin-job.response.dto';
 import { ApifyRunFailedException } from './exceptions/apify-run-failed.exception';
 
@@ -37,34 +39,39 @@ export class ApifyService {
   private readonly client: ApifyClient;
 
   /**
-   * LinkedIn cookies (li_at, JSESSIONID, etc.) required for authentication.
-   * These should be refreshed periodically as they expire.
+   * LinkedIn cookies loaded from linkedin-cookies.json file.
    *
    * IMPORTANT: The __cf_bm cookie expires after 30 minutes, so cookies
    * should be exported fresh before each scraping run.
    *
-   * To export cookies:
+   * To update cookies:
    * 1. Install a cookie export extension (e.g., Cookie-Editor, EditThisCookie)
    * 2. Navigate to https://www.linkedin.com
    * 3. Export cookies as JSON
-   * 4. Update this array with the fresh cookies
+   * 4. Paste the entire JSON array into linkedin-cookies.json
+   * 5. Restart the backend server
    */
-  private readonly LINKEDIN_COOKIES: LinkedinCookie[] = [
+  private readonly LINKEDIN_COOKIES: LinkedinCookie[] = JSON.parse(
+    readFileSync(join(__dirname, '../../..', 'src/modules/apify/linkedin-cookies.json'), 'utf-8'),
+  );
+
+  /* Old hardcoded cookies - now loaded from linkedin-cookies.json
+  private readonly LINKEDIN_COOKIES_OLD: LinkedinCookie[] = [
     {
       name: '_pxvid',
       value: '5df45f3b-17dc-11f1-8377-a8c0ad2f3f6f',
       domain: 'www.linkedin.com',
       path: '/',
-      expires: 1804173324,
+      expires: 1804179825,
       httpOnly: false,
       secure: false,
     },
     {
       name: 'bcookie',
-      value: '"v=2&10c40869-5494-47a7-8b1c-f16277c24f09"',
+      value: '"v=2&fe793b28-cee4-4a01-84b5-327c37ac7ded"',
       domain: '.linkedin.com',
       path: '/',
-      expires: 1804173323,
+      expires: 1804179824,
       httpOnly: false,
       secure: true,
       sameSite: 'None',
@@ -72,10 +79,10 @@ export class ApifyService {
     {
       name: '__cf_bm',
       value:
-        'MEqYcTsdOZLaeLmB2TMgmA8lm0q9gP5bxFwDsmnTMhU-1772637320-1.0.1.1-dMhFRugR1a93VwarCLf11gbZzWysvMqKFHIHpYmNzQNqztm1uIx9YpZVsE.BNwFC4ERXlYG2tzSBZz34YCB71Ft7u1uMcbuKkDHKFWKEPHA',
+        't7sfTN1JO2UbgSndKQID786xnbfN8n6fn2rSzp2nxOE-1772643819-1.0.1.1-9Arrr8bwhmBjb0PZKBxuAX7bdWmBio_G.AOjigzGN9uZOJREf4qNLGRWATdG6xgDFWVMKYZnlWnAsXglURK5ohYr9xzdwGlQXxOB5m2.v8c',
       domain: '.linkedin.com',
       path: '/',
-      expires: 1772639120,
+      expires: 1772645620,
       httpOnly: true,
       secure: true,
       sameSite: 'None',
@@ -83,10 +90,10 @@ export class ApifyService {
     {
       name: '_px3',
       value:
-        'a448779a64e5edb26ebf52b682aba75011c0bcdcb83ac4fcc6f663700fd579a6:65i8NOsz8z1ZdxM2ivQi+Y+wAC+/iYH6gUSO3p9gu8YSnrSG/M9IRWijFw5+H/V7SDAXc7Pj0i1XiTyHPMbA/A==:1000:uf/Yjf9ZfnoPAjfSQGAZ9kM41+BYdLdBhgf4GX6xiEoi4RAM1n3hti/pI1XHNwf5I2kAE5ZLsQJTG1WVld+c9FDxhT8JlH0Xe4Hb6Ot8MOkSt/Eq0MqeSteMl6SBR2h591Tz0E5Wb/qyo4g2lVeqVS/+KEUrqmW2nVQZzoz68Of6/B/WAGds2QyMKR9zW+BMj1nT9xxZ8Mij2PzS8UHql+tf6ubQTElb06gw5OWUZ5fQIha66U/HmputW1zY+CyjjIpDnAtrwDqo7uZMG3pHV5Xp4DgSlXDVVPNiWS1jzOMXskKp1nsd7GtDq7oRQh9+1RqMU22NXinR9QO5yGfWIegTzE0utIUSaPi052gvdQcBwWDiQCuR20UeQc+yThROCMZzApKoTtAhsxhIDe2VQAEntQbyIIDuLGJSIxwBVDKD7HTOmYdiASyIz1x5XcrHdPM5T+nHueuzVwVaLeV5p+TMrV1a7U/P2slJBAmQkGDA9BoLiEuLq57kExwjstKN',
+        '009e9730b635db9818482c1c6c1a487463a7b9e156223766800d877f538c69e1:DfVuCc5E4pbCSePfNnULWj/nXwrxZNHV5CgJMP3oAwadJhQS752DJGZe/axveyLy6X2QHBXpMpvfk+885FjT/A==:1000:FKDbj3HfoKwvItM35iPYHMdmHiLrteSe6AE27SmKwrMhsZNAeUGYCOHQnHJ9Pu8JeFlMhCPYGrwQpDX0JiBeAh/4dWQYGhTkexZjoDpdi54dG2eSsFQ2lU1+WcBzDL7Lenur1/gsioCHSte7hMiWp9Rxb2r/F/2CVN97slrwHg8MgCccYjqQPYU9wG9t9vxp6rIzD1+DtM5JMFeOYy8A4ovbYydURGWrTPpmArpf1Q4wBJWSjnvBe0/lX7wWMMeUtCyjUacX9Ffn7lcgw3y6YoPULIwXReimg9UNeLulA8bdk20Bz51zx0yiqFiv+Qlg6V4J1b0+3EO0WFiG5vC0SHOz6cw8FMAJuGM0regu7bVRhLzY+UBO6i5gIcUEcETDOcs50G4txyPJEXyma3cHlsqPWybnHmyxuUFyUZpBb3roGG63HpoX0qtJMD8/GUjohhxtajioPs9oDjX5hhlzDHh6pY4WJgBWDd3Nof/tOqCKMXx2lXQTkk6RFqip7tQ5',
       domain: 'www.linkedin.com',
       path: '/',
-      expires: 1772637487,
+      expires: 1772644027,
       httpOnly: false,
       secure: false,
     },
@@ -121,10 +128,10 @@ export class ApifyService {
     {
       name: 'li_at',
       value:
-        'AQEDATVLS80Bk11XAAABnLlrAGgAAAGc3XeEaE0AfTXzLkJatX_XTvVgBSvO6fvVviF-z8viOueJPpXSjl_Fw4fum-0qbj3EBihHnMx1fbVHIb-j0ylOTi96zZm41tXLDkmjvLkqAKomIfpAnq5yJpzf',
+        'AQEDATVLS80EGp-WAAABnLnOMOUAAAGc3dq05U4AYBm-3feetRnPKkTIyf7DAwQaCYqDP0QJ17yxCKEOSseJZ1g3xI1mSTpOlexA-Y-or4vEr3NYbkZhQX6KRSgs852tAJnghK0cCeogmK532dx_MBc4',
       domain: '.www.linkedin.com',
       path: '/',
-      expires: 1804173323,
+      expires: 1804179824,
       httpOnly: true,
       secure: true,
       sameSite: 'None',
@@ -247,6 +254,7 @@ export class ApifyService {
       sameSite: 'None',
     },
   ];
+  */
 
   private readonly USER_AGENT =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';

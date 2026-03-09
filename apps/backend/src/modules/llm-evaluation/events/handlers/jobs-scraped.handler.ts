@@ -39,21 +39,23 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
       return;
     }
 
-    console.log('┌─────────────────────────────────────────────────────────┐');
-    console.log('│          🤖 LLM EVALUATION STARTED                      │');
-    console.log('└─────────────────────────────────────────────────────────┘');
-    console.log(`📊 Jobs to evaluate: ${event.jobIds.length}`);
-    console.log(`🧠 Model: ${preferences.llmModel}`);
-    console.log(`🎯 Min score threshold: ${preferences.minScoreThreshold}\n`);
+    this.logger.log('\n🤖 LLM EVALUATION STARTED');
+    this.logger.log(`📊 Jobs to evaluate: ${event.jobIds.length}`);
+    this.logger.log(`🧠 Model: ${preferences.llmModel}`);
+    this.logger.log(`🎯 Min score threshold: ${preferences.minScoreThreshold}\n`);
 
     // Create progress bar for LLM evaluation
-    const evalProgressBar = new cliProgress.SingleBar({
-      format:
-        '🧠 Evaluating Jobs |{bar}| {percentage}% | {value}/{total} jobs | ETA: {eta}s | ⭐ Avg Score: {avgScore}',
-      barCompleteChar: '\u2588',
-      barIncompleteChar: '\u2591',
-      hideCursor: true,
-    });
+    const evalProgressBar = new cliProgress.SingleBar(
+      {
+        format:
+          '🧠 Evaluating Jobs |{bar}| {percentage}% | {value}/{total} jobs | ETA: {eta}s | ⭐ Avg Score: {avgScore}',
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true,
+        forceRedraw: true,
+      },
+      cliProgress.Presets.shades_classic,
+    );
 
     let evaluatedCount = 0;
     let filteredCount = 0;
@@ -74,7 +76,7 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
 
         // Skip if already evaluated (idempotency)
         if (job.score !== null && job.score !== undefined) {
-          this.logger.debug(`Job ${jobId} already evaluated (score: ${job.score}), skipping`);
+          // this.logger.debug(`Job ${jobId} already evaluated (score: ${job.score}), skipping`); // Disabled to avoid interrupting progress bar
           continue;
         }
 
@@ -127,19 +129,26 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
         processedCount++;
         const avgScore = Math.round(totalScore / processedCount);
         evalProgressBar.update(processedCount, { avgScore: avgScore.toString() });
+
+        // Log progress every 50 jobs as fallback if progress bar not visible
+        if (processedCount % 50 === 0) {
+          evalProgressBar.stop();
+          this.logger.log(
+            `Progress: ${processedCount}/${event.jobIds.length} jobs (${Math.round((processedCount / event.jobIds.length) * 100)}%) | Avg Score: ${avgScore}`,
+          );
+          evalProgressBar.start(event.jobIds.length, processedCount, {
+            avgScore: avgScore.toString(),
+          });
+        }
       } catch (error) {
-        const errorStack = error instanceof Error ? error.stack : String(error);
-        this.logger.error(
-          `\n❌ Failed to evaluate job ${jobId}: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        // Log error silently to avoid interrupting progress bar
         errorCount++;
         processedCount++;
-        evalProgressBar.update(processedCount, {
-          avgScore:
-            processedCount > 0
-              ? Math.round(totalScore / (processedCount - errorCount)).toString()
-              : 'N/A',
-        });
+        const avgScore =
+          processedCount > errorCount
+            ? Math.round(totalScore / (processedCount - errorCount)).toString()
+            : 'N/A';
+        evalProgressBar.update(processedCount, { avgScore });
         // Continue with next job (don't fail entire batch)
       }
     }
@@ -147,20 +156,18 @@ export class JobsScrapedEvaluationHandler implements IEventHandler<JobsScrapedEv
     evalProgressBar.stop();
 
     // Final summary
-    console.log('\n┌─────────────────────────────────────────────────────────┐');
-    console.log('│          ✅ EVALUATION COMPLETE                         │');
-    console.log('└─────────────────────────────────────────────────────────┘');
-    console.log(`✅ Successfully evaluated: ${evaluatedCount}`);
-    console.log(`🚫 Filtered by keywords: ${filteredCount}`);
-    console.log(`❌ Errors: ${errorCount}`);
+    this.logger.log('\n✅ EVALUATION COMPLETE');
+    this.logger.log(`✅ Successfully evaluated: ${evaluatedCount}`);
+    this.logger.log(`🚫 Filtered by keywords: ${filteredCount}`);
+    this.logger.log(`❌ Errors: ${errorCount}`);
     if (evaluatedCount > 0) {
       const avgScore = Math.round(totalScore / evaluatedCount);
-      console.log(`⭐ Average score: ${avgScore}/100`);
+      this.logger.log(`⭐ Average score: ${avgScore}/100`);
       const highScoring =
         evaluatedCount > 0
           ? '(Check database for jobs ≥' + preferences.minScoreThreshold + ')'
           : '';
-      console.log(`🎯 High-scoring jobs: ${highScoring}\n`);
+      this.logger.log(`🎯 High-scoring jobs: ${highScoring}\n`);
     }
   }
 }
